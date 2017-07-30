@@ -1,4 +1,3 @@
-import { ValidationErrors } from './validation';
 import { Action, buildCreator } from 'ts-actions';
 
 
@@ -11,7 +10,7 @@ export default buildCreator('redux-form', {
     return {path};
   },
 
-  updateValidation(path: string, errors: ValidationErrors): UpdateValidationAction {
+  updateValidation(path: string, errors: {[id: string]: string[]}): UpdateValidationAction {
     return {path, errors};
   },
 
@@ -35,7 +34,7 @@ export interface ClearAction extends Action {
 
 export interface UpdateValidationAction extends Action {
   path: string;
-  errors: ValidationErrors;
+  errors: {[id: string]: string[]};
 };
 
 

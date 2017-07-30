@@ -1,7 +1,8 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import test from 'ava';
-import { reducer, actions, Form, reduxField, Validator, ValidationErrors } from '../lib';
+import { reducer, actions, Form, reduxField } from '../lib';
+import * as Validator from 'extensible-validator';
 import { createStore, Action } from 'redux';
 import { Provider } from 'react-redux';
 import { shallow, mount } from 'enzyme';
@@ -147,34 +148,34 @@ test('reduxForm', (t) => {
 });
 
 
-test('reduxForm validation', (t) => {
+test.only('Form validation', (t) => {
   const store = createStore(reducer, {
     model: {
       input: ''
     }
   });
 
-  const validator = makeValidator({
-    input: (value) => /^[0-9]+$/.test(value)
-      ? []
-      : ['must be a number']
-  });
-
   const Input = reduxField(
-    (props) => <input type='text' value={props.value} onChange={props.onChange}
-                  data-valid={props.valid} data-errors={props.errors} />
+    (props) => <input type='text' value={props.value}
+      onChange={(e) => {
+        props.onChange(e)}
+      }
+      data-valid={props.valid}
+      data-errors={props.errors} />
   );
   
   const wrapper = mount(
     <Provider store={store}>
-      <Form path='model' validator={validator}>
+      <Form path='model' validation={{input: new Validator.Number()}}>
         <Input name='input' />
       </Form>
     </Provider>
   );
 
   const input = wrapper.find('input');
+  console.log(input.props())
   input.simulate('change', {target: {value: 'abc'}});
+  console.log(input.props())
   t.is(input.prop('data-valid'), false);
   t.deepEqual(input.prop('data-errors'), ['must be a number']);
 });
@@ -187,12 +188,6 @@ test('reduxForm onValidSubmit', (t) => {
     }
   });
 
-  const validator = makeValidator({
-    input: (value) => /^[0-9]+$/.test(value)
-      ? []
-      : ['must be a number']
-  });
-
   const Input = reduxField(
     (props) => <input type='text' value={props.value} onChange={props.onChange} />
   );
@@ -201,7 +196,7 @@ test('reduxForm onValidSubmit', (t) => {
   
   const wrapper = mount(
     <Provider store={store}>
-      <Form path='model' validator={validator}
+      <Form path='model' validation={{input: new Validator.Number()}}
         onValidSubmit={(model) => {
           called = true;
           let {_validation, ..._model} = model;
@@ -243,11 +238,7 @@ test('validator on field', (t) => {
     <Provider store={store}>
       <Form path='model' onValidSubmit={() => called = true}>
         <Input name='input'
-          validator={
-            (value) => /^[0-9]+$/.test(value)
-              ? []
-              : ['must be a number']
-          } />
+          validation={new Validator.Number()} />
       </Form>
     </Provider>
   );
@@ -265,29 +256,3 @@ test('validator on field', (t) => {
   form.simulate('submit');
   t.true(called);
 });
-
-
-
-function makeValidator(rules: {[key: string]: (value: any) => string[]}): Validator {
-  return {
-    validateKey(path: string, value: any, model: { [key: string]: any; }): string[] {
-      const validator = rules[path];
-      if (!validator) console.log(`missing validator for ${path}`)
-      return validator ? validator(value) : [];
-    },
-
-    validateAll(model: { [key: string]: any; }): ValidationErrors {
-      const result: ValidationErrors = {};
-
-      for (const key in rules) {
-        const keyResult = this.validateKey(key, model[key], model);
-        
-        if (keyResult && keyResult.length) {
-          result[key] = keyResult;
-        }
-      }
-
-      return result;
-    }
-  }
-}

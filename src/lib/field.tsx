@@ -1,6 +1,6 @@
 import actions from './actions';
 import { FormContext, FormContextTypes, formContextTypes, FormDispatchProps } from './form';
-import { ValueValidator } from './validation';
+import * as Validator from 'extensible-validator';
 import * as _ from 'lodash';
 import * as React from 'react';
 import { contextProvider, contextToProps } from 'react-context-helpers';
@@ -9,7 +9,7 @@ import { connect, ComponentDecorator } from 'react-redux';
 
 export interface FieldProps {
   name: string;
-  validator?: ValueValidator;
+  validation?: Validator.Validator;
 };
 
 export interface MergedFieldProps extends FieldProps, FormContextTypes {
@@ -58,14 +58,14 @@ function wrapField<TProps>(
   
   return (props: ConnectedFieldProps & TProps) => {
     const {
-      name, validator,
+      name, validation,
       formContext,
       update, updateValidation, updateValidationKey,
       ...ownProps
     } = props as ConnectedFieldProps;
 
-    if (validator) {
-      formContext.validatorMap[name] = validator;
+    if (validation) {
+      formContext.validation[name] = validation;
     }
 
     return (
@@ -74,13 +74,10 @@ function wrapField<TProps>(
         onChange={(e) => {
           update(formContext.path, name, e.target.value);
 
-          if (formContext.validator) {
-            const result = formContext.validator.validateKey(name, e.target.value, formContext.model);
-            updateValidationKey(formContext.path, name, result);
-          }
-
-          if (validator) {
-            const result = validator(e.target.value, formContext.model);
+          if (validation) {
+            const result = validation.validate(e.target.value, formContext.model)
+              .map((x) => x.message);
+              
             updateValidationKey(formContext.path, name, result);
           }
         }} />

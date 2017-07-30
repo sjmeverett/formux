@@ -1,5 +1,5 @@
 import actions from './actions';
-import { Validator, ValidatorMap, ValidationErrors } from './validation';
+import * as Validator from 'extensible-validator';
 import * as _ from 'lodash';
 import * as PropTypes from 'prop-types';
 import * as React from 'react';
@@ -8,8 +8,7 @@ import { connect, ComponentDecorator } from 'react-redux';
 
 export interface FormContextProps {
   path: string;
-  validator?: Validator;
-  validatorMap?: ValidatorMap;
+  validation?: Validator.KeyValidator;
 };
 
 export interface FormProps extends FormContextProps {
@@ -23,7 +22,7 @@ export interface FormStateProps {
 
 export interface FormDispatchProps {
   update(path: string, key: string, value: string): void;
-  updateValidation(path: string, errors: ValidationErrors): void;
+  updateValidation(path: string, value: {[id: string]: string[]}): void;
   updateValidationKey(path: string, key: string, errors: string[]): void;
 };
 
@@ -66,8 +65,7 @@ const provideFormContext: ComponentDecorator<DecoratedFormProps, DecoratedFormPr
       formContext: {
         path: props.path,
         model: props.model,
-        validator: props.validator,
-        validatorMap: props.validatorMap
+        validation: props.validation
       }
     })
   );
@@ -78,23 +76,37 @@ const FormWithContext = provideFormContext((props) => (
       onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        let result = {};
+        let result: Validator.ValidationResult = [];
+        
+        if (props.validation) {
+          for (const key in props.validation) {
+            const keyResult = props.validation[key].validate(
+              props.model[key],
+              {
+                model: props.model,
+                path: key
+              }
+            );
 
-        if (props.validator) {
-          result = props.validator.validateAll(props.model);
-        }
-
-        if (props.validatorMap) {
-          for (const key in props.validatorMap) {
-            const keyResult = props.validatorMap[key](props.model[key], props.model);
-
-            if (keyResult && keyResult.length) {
-              result[key] = keyResult;
-            }
+            result.push(...keyResult);
           }
         }
 
-        props.updateValidation(props.path, result);
+        if (result.length === 0) {
+          props.updateValidation(props.path, {});
+
+        } else {
+          props.updateValidation(
+            props.path,
+            _.mapValues(
+              _.groupBy(
+                result,
+                (err) => err.path
+              ),
+              (group) => group.map((x) => x.message)
+            )
+          )
+        }
         
         if (Object.keys(result).length === 0) {
           props.onValidSubmit(props.model);
@@ -118,7 +130,7 @@ const connectForm = connect<FormStateProps, FormDispatchProps, FormProps>(
 
     return {
       model,
-      validatorMap: ownProps.validatorMap || {}
+      validatorMap: ownProps.validation || {}
     };
   },
   formActions
