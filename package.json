@@ -11,7 +11,7 @@
     "lodash": "^4.17.4",
     "prop-types": "^15.5.9",
     "react": "^15.5.4",
-    "react-context-helpers": "^1.0.0",
+    "react-context-helpers": "^2.0.0",
     "react-redux": "^5.0.4",
     "redux": "^3.6.0",
     "ts-actions": "^1.0.0"
