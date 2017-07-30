@@ -1,18 +1,15 @@
-import actions from './actions';
-import { Validator, ValidatorMap, ValidationErrors } from './validation';
+import actions, { KeyValidationResult } from './actions';
+import * as Validator from 'extensible-validator';
 import * as _ from 'lodash';
 import * as PropTypes from 'prop-types';
 import * as React from 'react';
-import { contextProvider, contextToProps } from 'react-context-helpers';
+import { contextProvider } from 'react-context-helpers';
 import { connect, ComponentDecorator } from 'react-redux';
 
-export interface FormContextProps {
-  path: string;
-  validator?: Validator;
-  validatorMap?: ValidatorMap;
-};
 
-export interface FormProps extends FormContextProps {
+export interface FormProps {
+  path: string;
+  validationMap?: Validator.KeyValidation;
   onValidSubmit?: (model?: any) => any;
   className?: string;
 };
@@ -21,88 +18,15 @@ export interface FormStateProps {
   model: any;
 };
 
+export interface FormContext {
+  path: string;
+  validationMap: Validator.KeyValidation;
+  model: any;
+};
+
 export interface FormDispatchProps {
-  update(path: string, key: string, value: string): void;
-  updateValidation(path: string, errors: ValidationErrors): void;
-  updateValidationKey(path: string, key: string, errors: string[]): void;
+  updateValidation(path: string, value: KeyValidationResult): void
 };
-
-export interface FormMergedProps extends FormStateProps, FormDispatchProps {
-};
-
-export interface DecoratedFormProps extends FormProps, FormMergedProps {
-};
-
-export interface FormContext extends FormContextProps, FormStateProps {
-};
-
-export interface FormContextTypes {
-  formContext: FormContext;
-};
-
-export const formContextTypes: PropTypes.ValidationMap<FormContextTypes> = {
-  formContext: PropTypes.shape({
-    path: PropTypes.string,
-    model: PropTypes.object,
-    validator: PropTypes.object,
-    validatorMap: PropTypes.object
-  })
-};
-
-const formActions = {
-  update: actions.update,
-  updateValidation: actions.updateValidation,
-  updateValidationKey: actions.updateValidationKey
-};
-
-
-/**
- * Copy form props into context.
- */
-const provideFormContext: ComponentDecorator<DecoratedFormProps, DecoratedFormProps>
-  = contextProvider<FormContextTypes, DecoratedFormProps, DecoratedFormProps>(
-    formContextTypes, 
-    (props) => ({
-      formContext: {
-        path: props.path,
-        model: props.model,
-        validator: props.validator,
-        validatorMap: props.validatorMap
-      }
-    })
-  );
-
-
-const FormWithContext = provideFormContext((props) => (
-  <form className={props.className}
-      onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        let result = {};
-
-        if (props.validator) {
-          result = props.validator.validateAll(props.model);
-        }
-
-        if (props.validatorMap) {
-          for (const key in props.validatorMap) {
-            const keyResult = props.validatorMap[key](props.model[key], props.model);
-
-            if (keyResult && keyResult.length) {
-              result[key] = keyResult;
-            }
-          }
-        }
-
-        props.updateValidation(props.path, result);
-        
-        if (Object.keys(result).length === 0) {
-          props.onValidSubmit(props.model);
-        }
-      }}>
-    {props.children}
-  </form>
-));
 
 
 /**
@@ -118,10 +42,74 @@ const connectForm = connect<FormStateProps, FormDispatchProps, FormProps>(
 
     return {
       model,
-      validatorMap: ownProps.validatorMap || {}
     };
   },
-  formActions
+  {
+    updateValidation: actions.updateValidation
+  }
 );
 
-export const Form = connectForm(FormWithContext);
+/**
+ * The form context provider copies its props into the `form` key on the context.
+ */
+const FormContextProvider = contextProvider<FormContext>('form');
+
+/**
+ * A redux form.
+ */
+export const Form = connectForm((props) => {
+  const {
+    className,
+    onValidSubmit,
+    validationMap={},
+    children,
+    updateValidation,
+    ...contextProps
+  } = props;
+
+  // handle form submit
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const result: Validator.ValidationResult = [];
+    e.preventDefault();
+
+    // iterate over the validator map
+    for (const key in validationMap) {
+      // validate the current key
+      const keyResult = validationMap[key].validate(props.model[key], props.model);
+
+      // save the error(s) if there are any
+      result.push(...keyResult);
+    }
+
+    if (result.length === 0) {
+      // blank the validation state if there were no errors
+      updateValidation(props.path, {});
+
+      // call the valid submit handler
+      onValidSubmit(props.model);
+
+    } else {
+      // group the validation errors by path
+      const groups = _.groupBy(result, (err) => err.path);
+
+      // keep only the messages
+      const messages = _.mapValues(
+        groups,
+        (group) => group.map((err) => err.message)
+      );
+
+      // update the validation state
+      updateValidation(props.path, messages);
+    }
+  };
+
+  return (
+    <form className={props.className} onSubmit={onSubmit}>
+      <FormContextProvider validationMap={validationMap || {}} {...contextProps}>
+        {children}
+      </FormContextProvider>
+    </form>
+  );
+});
+
+
