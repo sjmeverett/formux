@@ -11,6 +11,7 @@ import { connect, ComponentDecorator } from 'react-redux';
 export interface FieldProps {
   name: string;
   validation?: Validator.Validator;
+  onChange?: (e: React.ChangeEvent<any>, context?: FormContext) => void;
 };
 
 export interface FieldWithContextProps extends FieldProps, FormContext {
@@ -73,6 +74,7 @@ export function reduxField<TProps = {}>(
       model,
       update,
       updateValidationKey,
+      onChange,
       ...fieldProps
     } = props as ConnectedFieldProps;
 
@@ -83,7 +85,7 @@ export function reduxField<TProps = {}>(
     }
 
     // when the field changes due to user input, this is called
-    const onChange = (e) => {
+    const _onChange = (e) => {
       // update the form state with the new input
       update(path, name, e.target.value);
 
@@ -102,9 +104,12 @@ export function reduxField<TProps = {}>(
 
         updateValidationKey(path, name, errors);
       }
+
+      // call passed-in onChange if it's there
+      onChange && onChange(e, {path, validationMap, model});
     };
 
-    return <Field onChange={onChange} {...fieldProps} />;
+    return <Field {...fieldProps} onChange={_onChange} />;
   });
 
   // wrap the above field to supply some props from context

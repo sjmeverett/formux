@@ -147,6 +147,30 @@ test('Form', (t) => {
   t.is(input.prop('value'), 'fish');
 });
 
+test('calls passed in onChange', (t) => {
+  const store = createStore(reducer, {
+    model: {
+      input: 'value'
+    }
+  });
+
+  const Input = reduxField((props) => <input type='text' value={props.value} onChange={props.onChange} />);
+  let onChangeCalled = false;
+
+  const wrapper = mount(
+    <Provider store={store}>
+      <Form path='model'>
+        <Input name='input' onChange={() => onChangeCalled = true} />
+      </Form>
+    </Provider>
+  );
+
+  const input = wrapper.find('input');
+  input.simulate('change', {target: {value: 'fish'}});
+  t.is(input.prop('value'), 'fish');
+  t.true(onChangeCalled);
+});
+
 
 test('Form validation', (t) => {
   const store = createStore(reducer, {

@@ -1,6 +1,6 @@
 {
   "name": "formux",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Makes constructing forms in a React/Redux application easier",
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
