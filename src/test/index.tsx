@@ -160,7 +160,10 @@ test('calls passed in onChange', (t) => {
   const wrapper = mount(
     <Provider store={store}>
       <Form path='model'>
-        <Input name='input' onChange={() => onChangeCalled = true} />
+        <Input name='input' onChange={(e, context) => {
+          t.is(context.path, 'model');
+          onChangeCalled = true;
+        }} />
       </Form>
     </Provider>
   );
