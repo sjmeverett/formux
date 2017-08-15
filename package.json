@@ -1,6 +1,6 @@
 {
   "name": "formux",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Makes constructing forms in a React/Redux application easier",
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
@@ -12,7 +12,7 @@
     "lodash": "^4.17.4",
     "prop-types": "^15.5.9",
     "react": "^15.6.1",
-    "react-context-helpers": "^2.0.0",
+    "react-context-helpers": "^2.1.0",
     "react-dom": "^15.6.1",
     "react-redux": "^5.0.4",
     "redux": "^3.6.0",

@@ -52,7 +52,7 @@ const connectForm = connect<FormStateProps, FormDispatchProps, FormProps>(
 /**
  * The form context provider copies its props into the `form` key on the context.
  */
-const FormContextProvider = contextProvider<FormContext>('form');
+const FormContextProvider = contextProvider<FormContext>('form', ['path', 'validationMap', 'model']);
 
 /**
  * A redux form.
